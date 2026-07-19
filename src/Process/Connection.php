@@ -11,16 +11,14 @@ use RuntimeException;
  * `Phord.Process.Runner`. Framework-agnostic (socket + Frame + JSON); the Laravel
  * bootstrapping lives in phord/laravel.
  *
- * Wire (length-prefixed frames, a startup handshake only in v1):
+ * Wire (length-prefixed frames):
  *
- *     <- boot      : {"class":"App\\…Process","args":[...]}   (BEAM → PHP)
+ *     <- boot      : {"class":"App\\…Process","args":[...]}   (BEAM → PHP)   handshake
  *     -> ready     : {"phord":"ready"} | {"phord":"boot_error","error":...}
  *
- * After the handshake the process is busy inside handle() and does NOT read this
- * socket again — stop is delivered by SIGTERM (a blocked process can't service a
- * socket read). This socket is the documented Layer-2 attach point: a future
- * inbound `{"call":...}` frame type would land here once the contract grows a
- * cooperative read point (see PhordProcess).
+ * A PhordProcess uses only the boot handshake: after it, the process is busy
+ * inside handle() and does NOT read this socket again — stop is delivered by
+ * SIGTERM (a blocked process can't service a socket read).
  */
 class Connection
 {
