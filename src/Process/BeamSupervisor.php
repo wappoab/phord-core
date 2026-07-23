@@ -46,6 +46,19 @@ class BeamSupervisor
         return (bool) ($result['started'] ?? false);
     }
 
+    /**
+     * A lazy handle for messaging a running process by name:
+     *
+     *     $sup->get('rabbitmq-4711')->call('queueDepth');   // request/reply
+     *     $sup->get('rabbitmq-4711')->send('reload', $id);  // fire-and-forget
+     *
+     * Free — no round-trip; the process is contacted on the first call()/send().
+     */
+    public function get(string $name): ProcessHandle
+    {
+        return new ProcessHandle($this->channel, $name);
+    }
+
     /** Stop a supervised process by name (SIGTERM → grace → SIGKILL). No restart. */
     public function stop(string $name): bool
     {

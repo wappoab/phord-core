@@ -39,6 +39,8 @@ class Runtime
         try {
             $process = self::instantiate($boot['class']);
             $process->installSignalHandler();
+            // Raw core: handlers are invoked plainly (no container DI).
+            $process->bindControlChannel($connection);
         } catch (Throwable $e) {
             fwrite(STDERR, 'Phord process boot failed: ' . $e->getMessage() . "\n");
             $connection->sendBootError($e->getMessage());

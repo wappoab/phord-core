@@ -72,4 +72,61 @@ class ProcessConnectionTest extends TestCase
             json_decode(Frame::read($this->runner), true)
         );
     }
+
+    public function test_read_deliver_parses_id_method_and_args(): void
+    {
+        Frame::write($this->runner, json_encode(['id' => 7, 'method' => 'inc', 'args' => [5]]));
+
+        $msg = $this->conn->readDeliver();
+        $this->assertSame(7, $msg['id']);
+        $this->assertSame('inc', $msg['method']);
+        $this->assertSame([5], $msg['args']);
+    }
+
+    public function test_read_deliver_defaults_args_to_empty_array(): void
+    {
+        Frame::write($this->runner, json_encode(['id' => 1, 'method' => 'ping']));
+
+        $this->assertSame([], $this->conn->readDeliver()['args']);
+    }
+
+    public function test_read_deliver_returns_null_on_eof(): void
+    {
+        fclose($this->runner);
+        $this->assertNull($this->conn->readDeliver());
+    }
+
+    public function test_read_deliver_throws_on_a_frame_without_a_method(): void
+    {
+        Frame::write($this->runner, json_encode(['id' => 1]));
+
+        $this->expectException(\RuntimeException::class);
+        $this->conn->readDeliver();
+    }
+
+    public function test_send_result_frame(): void
+    {
+        $this->conn->sendResult(9, ['ok' => true]);
+        $this->assertSame(
+            ['id' => 9, 'result' => ['ok' => true]],
+            json_decode(Frame::read($this->runner), true)
+        );
+    }
+
+    public function test_send_error_frame(): void
+    {
+        $this->conn->sendError(9, 'boom');
+        $this->assertSame(
+            ['id' => 9, 'error' => 'boom'],
+            json_decode(Frame::read($this->runner), true)
+        );
+    }
+
+    public function test_has_pending_message_is_false_when_idle_true_when_buffered(): void
+    {
+        $this->assertFalse($this->conn->hasPendingMessage());
+
+        Frame::write($this->runner, json_encode(['id' => 1, 'method' => 'ping', 'args' => []]));
+        $this->assertTrue($this->conn->hasPendingMessage());
+    }
 }
