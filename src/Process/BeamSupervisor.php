@@ -47,6 +47,34 @@ class BeamSupervisor
     }
 
     /**
+     * Start a pool of $size FUNGIBLE warm replicas of $class under one $name
+     * (docs/design-records/process-pool.md): N interchangeable resident processes,
+     * each with its own warm state, with get($name)->call/send load-balanced across
+     * them for concurrency. Use this — not start() — when the warm thing is
+     * expensive to boot and calls are slow, so several can run at once.
+     *
+     * Two caveats vs a single process, by design: ordering is DROPPED (calls
+     * interleave across replicas; no read-your-write), and per-instance state is
+     * not queryable (status() reports the aggregate). Any replica serves any call,
+     * so the replicas must be interchangeable — for identity-bearing per-entity
+     * state use a keyed actor instead.
+     *
+     * @param  class-string<PhordProcess>  $class
+     * @param  array<int|string, mixed>     $args   passed to each replica's handle()
+     */
+    public function startPool(string $class, array $args, string $name, int $size): bool
+    {
+        $result = $this->channel->request('supervisor.start_pool', [
+            'class' => $class,
+            'args' => array_values($args),
+            'name' => $name,
+            'size' => $size,
+        ]);
+
+        return (bool) ($result['started'] ?? false);
+    }
+
+    /**
      * A lazy handle for messaging a running process by name:
      *
      *     $sup->get('rabbitmq-4711')->call('queueDepth');   // request/reply
